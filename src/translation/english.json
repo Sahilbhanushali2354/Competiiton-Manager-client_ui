@@ -9,7 +9,7 @@
   "home": "Home",
   "english": "English",
   "hindi": "Hindi",
-  "undo": "UNDO",
+  "reset": "RESET",
   "edit": "EDIT",
   "username": "USERNAME",
   "email": "EMAIL",
@@ -34,7 +34,8 @@
     "topic": "Enter Your Topic Name",
     "category": "Enter Your Topic Category",
     "description": "Enter Your Topic Description",
-    "presentation":"Upload Your Presentation File"
+    "presentation": "Upload Your Presentation File",
+    "competition": "Please Select Your Competition"
   },
-  "feedback":"Feedback"
+  "feedback": "Feedback"
 }

@@ -1,6 +1,6 @@
 import { Button, Input, Spin, Switch, message } from "antd";
-import { ChangeEvent, useEffect, useState } from "react";
-import { PeopleDataDTO, UserDTO } from "../types/input.type";
+import { ChangeEvent, KeyboardEvent, useEffect, useState } from "react";
+import { NewAccountDTO, UserDTO } from "../types/input.type";
 import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
 import { FStore, auth } from "../common/config/firebase/firebase.config";
 import { Link, useNavigate } from "react-router-dom";
@@ -14,7 +14,8 @@ import { useRecoilState } from "recoil";
 import styled, { ThemeProvider } from "styled-components";
 import loginImage from "../assets/images/Wavy_Gen-01_Single-07_prev_ui.png";
 import { Theme } from "../theme/Theme";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
+import { EyeInvisibleOutlined, EyeTwoTone } from "@ant-design/icons";
 
 export const MainContainer = styled(Spin)`
   margin-top: 26%;
@@ -46,7 +47,7 @@ export const LoginForm = styled.div`
 
   @media (max-width: 1110px) {
     height: 80%;
-    justify-content: flex-start;
+    justify-content: center;
   }
 `;
 
@@ -110,7 +111,6 @@ export const LoginButton = styled(Button)`
   background: black;
   color: white;
 `;
-export const LoginButtonContainer = styled.div``;
 
 const Login = () => {
   const navigate = useNavigate();
@@ -132,7 +132,7 @@ const Login = () => {
 
   useEffect(() => {
     getPeopleData();
-  }, []);
+  }, [poepleData]);
   useEffect(() => {
     const x = window.localStorage.getItem("theme");
     const y = x && JSON.parse(x ?? "");
@@ -145,20 +145,38 @@ const Login = () => {
       checked
         ? JSON.stringify(Theme.dark ?? "")
         : JSON.stringify(Theme.light ?? "")
-    ); // Set theme item in localStorage
+    );
   };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFields({ ...fields, [name]: value });
+    let trimmedValue = value;
+
+    if (name === "password") {
+      trimmedValue = value.replace(/\s/g, "");
+    }
+
+    setFields({ ...fields, [name]: trimmedValue });
+
     let _error = { ...errorMessage };
-    if (name === "email" || name === "password")
+    if (name === "email" || name === "password") {
       _error = {
         ...errorMessage,
         email: name === "email" && !value ? "Enter Your Email" : "",
-        password: name === "password" && !value ? "Enter Your password" : "",
+        password:
+          name === "password" && value.includes(" ")
+            ? "You can't Enter Space in Password"
+            : "",
       };
+    }
+
     setErrorMessage(_error);
+  };
+
+  const handlePasswordkeydown = (e: KeyboardEvent) => {
+    if (e.key == "Enter") {
+      handleLogin();
+    }
   };
 
   const handleLogin = () => {
@@ -184,8 +202,8 @@ const Login = () => {
         setErrorMessage(_error);
         return;
       }
-      setFields({});
       signin();
+      setFields({});
     }
     setErrorMessage(_error);
   };
@@ -199,31 +217,37 @@ const Login = () => {
       .then((userCredential) => {
         const user = userCredential.user;
         window.localStorage.setItem("auth", user.email ?? "");
-        // setAuthDetails(user.email as string);
-        console.log("---------user", user);
         message.success("Login SuccessFully");
       })
       .catch((error) => {
         setLoader(false);
         const errorMessage = error.message;
         message.error(errorMessage);
+        setFields({ ...fields, ["password"]: "" });
       });
   };
 
   const getPeopleData = async () => {
-    let x: PeopleDataDTO[] = [];
-    const querySnapshot = await getDocs(collection(FStore, "PEOPLE"));
-    querySnapshot.forEach((doc) => {
-      console.log(doc.id, " => ", doc.data());
-      const data = doc.data();
-      data.id = doc.id;
-      x.push(data);
-    });
-    setPeopleData(x);
+    const unsubscribe = onSnapshot(
+      collection(FStore, "PEOPLE"),
+      (querySnapshot) => {
+        const updatedData: NewAccountDTO[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data() as NewAccountDTO;
+          data.id = doc.id;
+          updatedData.push(data);
+        });
+        setPeopleData(updatedData);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
   };
   return (
     <ThemeProvider theme={themeData}>
-      <MainContainer spinning={loader} size="large">
+      <MainContainer spinning={loader}>
         <SubContainer>
           <ToggleContainer>
             <Switch
@@ -246,7 +270,7 @@ const Login = () => {
                   <Title>Welcome</Title>
                 </Header>
                 <div>
-                  <LinkText to="/login">Create a free account</LinkText>
+                  <LinkText to="/createaccount">Create a free account</LinkText>
                   <span>or log in to get started with TechFiesta</span>
                 </div>
                 <div style={{ padding: "7px" }}></div>
@@ -263,21 +287,25 @@ const Login = () => {
                 </InputDiv>
                 <InputDiv>
                   <div>Password</div>
-                  <Input
+                  <Input.Password
+                    iconRender={(visible) =>
+                      visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
+                    }
                     type="password"
                     name="password"
                     placeholder="Enter Your Password"
                     onChange={handleChange}
                     value={fields.password}
-                  />
+                    onKeyDown={handlePasswordkeydown}
+                  ></Input.Password>
                   <ErrorMessage>{errorMessage.password}</ErrorMessage>
                 </InputDiv>
                 <ForgotPasswordLink to="/forgotpassword">
                   Forgot Password?
                 </ForgotPasswordLink>
-                <LoginButtonContainer>
+                <div>
                   <LoginButton onClick={handleLogin}>Login</LoginButton>
-                </LoginButtonContainer>
+                </div>
               </LoginForm>
             </Container1>
           </GridContainer>

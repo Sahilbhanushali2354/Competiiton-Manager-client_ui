@@ -7,9 +7,18 @@ import {
   UploadProps,
   message,
   notification,
+  Dropdown,
+  MenuProps,
+  Space,
+  Input,
 } from "antd";
 import { ChangeEvent, useEffect, useState } from "react";
-import { PresentationDTO, PresentationErrorDTO } from "../types/input.type";
+import {
+  ActiveParticipantDTO,
+  PresentationDTO,
+  PresentationErrorDTO,
+  RoundsDataDTO,
+} from "../types/input.type";
 import { useRecoilState, useRecoilValue } from "recoil";
 import {
   AtomAllPresentations,
@@ -19,10 +28,18 @@ import {
 import hindi from "../translation/hindi.json";
 import english from "../translation/english.json";
 import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
-import { addDoc, collection, doc, setDoc } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  doc,
+  onSnapshot,
+  query,
+  setDoc,
+} from "firebase/firestore";
 import { FStore, auth } from "../common/config/firebase/firebase.config";
 import { InputContainer } from "./profile.page";
 import { useNavigate, useParams } from "react-router-dom";
+import { DownOutlined } from "@ant-design/icons";
 
 const Presentation = () => {
   const { id } = useParams();
@@ -41,7 +58,24 @@ const Presentation = () => {
   const [errorMessage, setErrorMessage] = useState<PresentationErrorDTO>(
     {} as PresentationErrorDTO
   );
+  const [allActiveData, setallActiveData] = useState<ActiveParticipantDTO[]>(
+    [] as ActiveParticipantDTO[]
+  );
+  const [selectedCompetition, setSelectedCompetition] = useState("");
+  const [activeRound, setActiveRound] = useState<RoundsDataDTO>(
+    {} as RoundsDataDTO
+  );
+  const [activeRoundData, setActiveRoundData] = useState<RoundsDataDTO>(
+    {} as RoundsDataDTO
+  );
+  const [initialPresentationData, setInitialPresentationData] =
+    useState<PresentationDTO>({} as PresentationDTO);
 
+  const [fileList, setFileList] = useState<UploadFile[]>([]);
+
+  useEffect(() => {
+    getActiveRoundDetail();
+  }, []);
   useEffect(() => {
     if (
       !AllPresentations.length &&
@@ -55,8 +89,34 @@ const Presentation = () => {
     setCurrentPresentationData(_currentUser ?? ({} as PresentationDTO));
   }, [id]);
 
+  useEffect(() => {
+    if (activeRound !== undefined) {
+      getActiveCompetition();
+    }
+  }, [activeRound]);
+  useEffect(() => {
+    if (window.location.href.split("/").includes("edit"))
+      setInitialPresentationData(currentPresentationData);
+  }, [id]);
+
+  const isPresentationDataChanged = () => {
+    if (!newFile.name) {
+      return false;
+    }
+    const presentationDataChanged =
+      JSON.stringify(initialPresentationData) !==
+      JSON.stringify(currentPresentationData);
+
+    const fileChanged = newFile.name !== currentPresentationData.fileName;
+
+    return presentationDataChanged || fileChanged;
+  };
+  const isUpdateDisabled = !isPresentationDataChanged();
+  console.log(currentPresentationData.fileName, newFile.name);
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+    let name = e.target.name;
+    let val = e.target.value;
+    const value = val.replace(/\s{2,}/g, " ");
     setCurrentPresentationData({ ...currentPresentationData, [name]: value });
 
     let _error = { ...errorMessage };
@@ -74,12 +134,29 @@ const Presentation = () => {
     setErrorMessage(_error);
   };
 
+  const uplaodChange: UploadProps["onChange"] = (info) => {
+    let newFileList = [...info.fileList];
+
+    newFileList = newFileList.slice(-1);
+
+    newFileList = newFileList.map((file) => {
+      if (file.response) {
+        file.url = file.response.url;
+      }
+      return file;
+    });
+
+    setFileList(newFileList);
+  };
+
   const props: UploadProps = {
     beforeUpload: (file) => {
+      setLoader(true);
       console.log(file.type);
       let _error = { ...errorMessage };
 
       if (!file) {
+        setLoader(false);
         setErrorMessage({
           ..._error,
           presentation: "Upload Your Presentation",
@@ -95,13 +172,21 @@ const Presentation = () => {
       ];
 
       if (!allowedFileTypes.includes(file.type)) {
-        message.error("You can only upload PDF, XLS, and Word files!");
+        setLoader(false);
+        setErrorMessage({
+          ...errorMessage,
+          ["presentation"]: "You can only upload PDF, XLS, and Word files!",
+        });
+
+        setNewFile({} as UploadFile);
         return false;
       }
-
+      setErrorMessage({ ...errorMessage, ["presentation"]: "" });
       setNewFile(file);
+      setLoader(false);
       return false;
     },
+    onChange: uplaodChange,
     onRemove: () => {
       setNewFile({} as any);
     },
@@ -109,7 +194,7 @@ const Presentation = () => {
   };
 
   const addData = async () => {
-    debugger;
+    setLoader(true);
     const storage = getStorage();
     const storageRef = ref(
       storage,
@@ -123,6 +208,8 @@ const Presentation = () => {
         setLoader(true);
         return {
           ...currentPresentationData,
+          competitionName: selectedCompetition as string,
+          roundData: { id: activeRoundData.id, label: activeRoundData.label },
           fileName: newFile.name,
           time: snapshot.metadata.timeCreated,
           email: auth.currentUser?.email,
@@ -130,9 +217,10 @@ const Presentation = () => {
       })
       .catch((e) => {
         setLoader(false);
-        console.log(e);
+        message.error(e);
       })
-      .then((presentationData) =>
+      .then((presentationData) => {
+        setLoader(true);
         getDownloadURL(
           ref(storage, `folder1/${auth.currentUser?.email}/${newFile.name}`)
         ).then(async (url) => {
@@ -143,8 +231,8 @@ const Presentation = () => {
           });
           message.success("Presentation Detail Added SuccessFully");
           navigate("/allpresentation");
-        })
-      )
+        });
+      })
       .catch((err) => {
         setLoader(false);
         notification.open({ message: err, type: "error" });
@@ -152,22 +240,48 @@ const Presentation = () => {
   };
 
   const handleSave = () => {
-    debugger;
+    setLoader(true);
     let _error = { ...errorMessage };
-    if (!currentPresentationData.topic || !currentPresentationData.category) {
+    if (
+      !currentPresentationData.topic ||
+      !currentPresentationData.category ||
+      !currentPresentationData.description ||
+      !newFile.name ||
+      !selectedCompetition
+    ) {
+      setLoader(false);
       _error = {
         ...errorMessage,
         topic: !currentPresentationData.topic ? translation.errors.topic : "",
         description: !currentPresentationData.description
           ? translation.errors.description
           : "",
-
         category: !currentPresentationData.category
           ? translation.errors.category
+          : "",
+        presentation: !newFile.name ? translation.errors.presentation : "",
+        competitionName: !selectedCompetition
+          ? translation.errors.competition
           : "",
       };
       setErrorMessage(_error);
     } else {
+      const allowedFileTypes = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      ];
+
+      if (!allowedFileTypes.includes(newFile.type as any)) {
+        setLoader(false);
+        setErrorMessage({
+          ...errorMessage,
+          ["presentation"]: "You can only upload PDF, XLS, and Word files!",
+        });
+        return;
+      }
+
       setLoader(true);
       if (!currentPresentationData.id) {
         addData();
@@ -177,10 +291,10 @@ const Presentation = () => {
     }
   };
 
-  console.log(currentPresentationData.fileName);
   const updateData = async () => {
-    debugger;
+    setLoader(true);
     if (!currentPresentationData.id) {
+      setLoader(false);
       console.error("Presentation ID is not defined");
       return;
     }
@@ -211,28 +325,33 @@ const Presentation = () => {
         .then((presentationData) =>
           getDownloadURL(
             ref(storage, `folder1/${auth.currentUser?.email}/${newFile.name}`)
-          ).then(async (url) => {
-            console.log(presentationData);
-            await setDoc(
-              doc(FStore, "PRESENTATION", currentPresentationData.id as string),
-              {
-                ...presentationData,
-                url,
-              }
-            );
-            setLoader(false);
-          })
+          )
+            .then(async (url) => {
+              setLoader(true);
+              await setDoc(
+                doc(
+                  FStore,
+                  "PRESENTATION",
+                  currentPresentationData.id as string
+                ),
+                {
+                  ...presentationData,
+                  url,
+                }
+              );
+              navigate("/allpresentation");
+            })
+            .catch((error) => {
+              setLoader(false);
+              message.error(error);
+            })
         )
-        .catch((err) => {
+        .catch((error) => {
           setLoader(false);
-          notification.open({ message: err, type: "error" });
+          message.error(error);
         });
     } else {
-      // If no new file is selected, update the presentation data without uploading a new file
       setLoader(true);
-
-      console.log({ currentPresentationData });
-
       await setDoc(
         doc(FStore, "PRESENTATION", currentPresentationData.id as string),
         currentPresentationData
@@ -241,13 +360,91 @@ const Presentation = () => {
       navigate("/allpresentation");
     }
   };
+  const handleItemClick = (competitionName: string) => {
+    setSelectedCompetition(competitionName);
+    const activeRoundData: any = allActiveData.find(
+      (competition: any) =>
+        competition.selectedCompetition.cname === competitionName
+    );
+    setActiveRoundData(activeRoundData?.roundsData ?? {});
+  };
+  const items: MenuProps["items"] = allActiveData.map((round: any) => ({
+    key: round.id,
+    label: round.selectedCompetition.cname,
+    onClick: () => {
+      handleItemClick(round.selectedCompetition.cname);
+
+      // if (activeRoundData) {
+      //   setActiveRound(activeRoundData.roundsData);
+      // }
+    },
+  }));
+  const getActiveRoundDetail = () => {
+    setLoader(true);
+    const q = query(collection(FStore, "DEFAULT"));
+    return onSnapshot(q, async (snapshot) => {
+      snapshot.forEach((doc) => {
+        const _data = doc.data();
+        console.log(_data);
+
+        _data.id = doc.id;
+
+        setActiveRound((prev) => ({
+          ...prev,
+          [doc.id]: {
+            roundsData: _data.activeRound,
+            selectedCompetition: _data.selectedCompetition,
+          },
+        }));
+      });
+      setLoader(false);
+    });
+  };
+
+  const getActiveCompetition = () => {
+    const active: any[] = [] as any[];
+    Object.entries(activeRound).forEach(([competitionID, roundData]) => {
+      const roundID = roundData.roundsData.id;
+      const docRef: any = doc(
+        FStore,
+        "COMPETITION",
+        competitionID,
+        roundID,
+        "PARTICIPANTS"
+      );
+      const unsubscribe = onSnapshot(
+        docRef,
+        (docSnapshot: any) => {
+          if (docSnapshot.exists()) {
+            const data = docSnapshot.data();
+            const _data = data?.DATA ?? [];
+
+            const _isFound = _data.some((email: ActiveParticipantDTO) => {
+              return email.email === auth.currentUser?.email;
+            });
+
+            if (_isFound) {
+              active.push(roundData);
+              setallActiveData(active);
+            }
+          }
+        },
+        (error: string | any) => {
+          setLoader(false);
+          message.error(error);
+        }
+      );
+
+      return () => unsubscribe();
+    });
+  };
 
   return (
     <Spin spinning={loader}>
       <div>
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <span>{translation.uploadpresentation}</span>
-          <Upload {...props} name="presentation">
+          <Upload {...props} name="presentation" fileList={fileList}>
             <Button icon={<UploadOutlined />}>{translation.upload}</Button>
           </Upload>
         </div>
@@ -292,6 +489,54 @@ const Presentation = () => {
         <div style={{ color: "red", fontSize: "13px" }}>
           {errorMessage.description}
         </div>
+        <div style={{ padding: "10px" }}></div>
+        <div>
+          <p>
+            {window.location.href.split("/").includes("edit") ||
+            selectedCompetition
+              ? "Selected Competition"
+              : "Select Competition"}
+          </p>
+          <Dropdown
+            disabled={window.location.href.split("/").includes("edit")}
+            menu={{ items: items }}
+            trigger={["click"]}
+          >
+            <Space>
+              {window.location.href.split("/").includes("edit")
+                ? currentPresentationData.competitionName
+                : selectedCompetition.length
+                ? selectedCompetition
+                : "Select Competition"}
+              {window.location.href.split("/").includes("edit") ? null : (
+                <DownOutlined />
+              )}
+            </Space>
+          </Dropdown>
+          {(window.location.href.split("/").includes("edit") &&
+            currentPresentationData.roundData) ||
+          selectedCompetition ? (
+            <span style={{ margin: "15px" }}>
+              <Space>Active Round : </Space>
+              <span style={{ margin: "5px" }}></span>
+              <Input
+                style={{
+                  width: "88px",
+                  textAlign: "center",
+                }}
+                readOnly={true}
+                value={
+                  window.location.href.split("/").includes("edit")
+                    ? currentPresentationData.roundData.label
+                    : activeRoundData.label
+                }
+              />
+            </span>
+          ) : null}
+        </div>
+        <div style={{ color: "red", fontSize: "13px" }}>
+          {errorMessage.competitionName}
+        </div>
         <div style={{ padding: "15px" }}></div>
 
         <div>
@@ -300,7 +545,11 @@ const Presentation = () => {
               {translation.save}
             </Button>
           ) : (
-            <Button onClick={handleSave} type="primary">
+            <Button
+              disabled={isUpdateDisabled ? true : false}
+              onClick={handleSave}
+              type="primary"
+            >
               {translation.update}
             </Button>
           )}

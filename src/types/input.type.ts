@@ -24,6 +24,25 @@ export interface PeopleDataDTO {
   profile?: string;
   address?: string;
 }
+
+export interface NewAccountDTO {
+  id?: string;
+  email?: string;
+  uname?: string;
+  contact?: string;
+  profile?: string;
+  address?: string;
+}
+
+export interface NewAccountErrorDTO {
+  email?: string;
+  uname?: string;
+  contact?: string;
+  profile?: string;
+  address?: string;
+  password?: string;
+}
+
 export interface TError {
   uname?: string;
   contact?: string;
@@ -41,6 +60,8 @@ export interface PresentationDTO {
   email?: string;
   description?: string;
   id?: string;
+  competitionName: string;
+  roundData: RoundsDataDTO;
 }
 
 export interface PresentationErrorDTO {
@@ -53,6 +74,7 @@ export interface PresentationErrorDTO {
   time?: string;
   email?: string;
   description?: string;
+  competitionName: string;
 }
 export interface OptionDTO {
   id: string;
@@ -71,7 +93,15 @@ export interface ActiveRoundDTO {
   id: string;
   label: string;
 }
-export interface ActiveSelectedParticipantDTO {
+export interface ActiveParticipantDTO {
+  id?: string;
+  email?: string;
+  uname?: string;
+  contact?: string;
+  profile?: string;
+  address?: string;
+}
+export interface SelectedParticipantDTO {
   id?: string;
   email?: string;
   uname?: string;
@@ -93,10 +123,13 @@ export interface RoundsDataDTO {
 export interface selctedParticipant {
   selectedParticipant: ActiveFormDTO;
   activeRound: ActiveRoundDTO;
-  activeSelectedPartcipant: ActiveSelectedParticipantDTO;
-  selectedCompetition:CompetitionDTO
+  activeParticipant: ActiveParticipantDTO;
+  selectedCompetition: CompetitionDTO;
 }
 export interface AllActiveFeedbackDTO {
   id: string;
-  selectedParticipant: selctedParticipant;
+  selectedParticipant: ActiveFormDTO;
+  activeRound: ActiveRoundDTO;
+  activeParticipant: ActiveParticipantDTO;
+  selectedCompetition: CompetitionDTO;
 }

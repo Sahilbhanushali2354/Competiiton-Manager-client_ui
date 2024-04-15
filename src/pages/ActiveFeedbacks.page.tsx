@@ -29,8 +29,6 @@ const ActiveFeedbacks = () => {
       let _allActiveFeedback: any = [] as any;
       snapshot.forEach((doc) => {
         const _data = doc.data();
-        console.log(_data);
-
         _data.id = doc.id;
         _allActiveFeedback.push(_data as any);
       });
@@ -41,7 +39,7 @@ const ActiveFeedbacks = () => {
   return (
     <Spin spinning={loader}>
       <div style={{ display: "flex", flexDirection: "column" }}>
-        {allActiveFeedback.map((feedback) => (
+        {allActiveFeedback.map((activeFeedback) => (
           <div
             style={{
               display: "flex",
@@ -49,29 +47,43 @@ const ActiveFeedbacks = () => {
               padding: "5px",
             }}
           >
-            <Card key={feedback.selectedParticipant.activeRound.id}>
-              <div>
-                <div>
-                  <b>Competition Name : </b>
-                  {feedback.selectedParticipant.selectedCompetition.cname}
+            {activeFeedback.selectedCompetition?.cname &&
+            activeFeedback.activeParticipant?.uname &&
+            activeFeedback.activeRound?.label ? (
+              <Card
+                style={{ width: "100%" }}
+                key={activeFeedback.activeRound.id}
+              >
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <div>
+                    <div>
+                      <b>Competition Name : </b>
+                      {activeFeedback.selectedCompetition.cname}
+                    </div>
+                    <div>
+                      <b>Participant Name : </b>
+                      {activeFeedback.activeParticipant.uname}
+                    </div>
+                    <div>
+                      <b>Active Round : </b>
+                      {activeFeedback.activeRound.label}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <Link
+                      to={`/activefeedbackforms/new/${activeFeedback.id}`}
+                      onClick={() => setCurrentActiveFeedback(activeFeedback)}
+                    >
+                      <Button type="primary" style={{ width: "100%" }}>
+                        Give Feedback
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
-                <div>
-                  <b>Participant Name : </b>
-                  {feedback.selectedParticipant.activeSelectedPartcipant.uname}
-                </div>
-                <div>
-                  <b>Active Round : </b>
-                  {feedback.selectedParticipant.activeRound.label}
-                </div>
-              </div>
-            </Card>
-
-            <Link
-              to={`/activefeedbackforms/new/${feedback.id}`}
-              onClick={() => setCurrentActiveFeedback(feedback)}
-            >
-              <Button>Give Feedback</Button>
-            </Link>
+              </Card>
+            ) : null}
           </div>
         ))}
       </div>

@@ -1,7 +1,7 @@
 import { collection, doc, getDocs, setDoc } from "firebase/firestore";
 import { FStore, auth } from "../common/config/firebase/firebase.config";
 import { useEffect, useState } from "react";
-import { Button, Radio, Spin, message } from "antd";
+import { Button, Radio, Space, Spin, message } from "antd";
 import styled from "styled-components";
 import { FieldValueDTO } from "../types/input.type";
 import { useNavigate, useParams } from "react-router-dom";
@@ -27,19 +27,18 @@ const Feedback = () => {
   const [loader, setLoader] = useState(false);
   const [fieldValue, setFieldValue] = useState({});
   const currentActiveFeedback = useRecoilValue(CurrentActiveFeedbackAtom);
-  const [feedbackResponse, setFeedbackResponse] = useState({});
+  const [totalPoints, setTotalPoints] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
   useEffect(() => {
-    console.log(currentActiveFeedback);
-
-    if (
-      !currentActiveFeedback.id ||
-      !currentActiveFeedback.selectedParticipant
-    ) {
+    if (!currentActiveFeedback.id) {
       return navigate("/activefeedbackforms");
     }
     getFeedbackForm();
   }, [id]);
-
+  useEffect(() => {
+    if (submitted) AddData();
+  }, [submitted]);
   const handleChange = (e: any) => {
     let { name, value } = e.target;
 
@@ -47,45 +46,36 @@ const Feedback = () => {
   };
 
   const getFeedbackForm = async () => {
+    setLoader(true);
     const _data: any = [];
     const querySnapshot = await getDocs(collection(FStore, "FEEDBACK"));
     querySnapshot.forEach((doc) => {
       const x = doc.data();
       x.id = doc.id;
-      console.log(doc.data());
-      console.log(doc.id);
       _data.push(x);
     });
     setFormValue(_data as any);
-    setLoader(true);
-    console.log(Object.entries(_data[0]["formData"]));
-
-    Object.entries(_data[0]["formData"]).map(([key, value]) => {
-      console.log(key);
-      console.log(value);
-    });
+    setDataLoaded(true);
+    setLoader(false);
   };
   const handleSubmit = () => {
-    // const unansweredQuestions = Object.entries(fieldValue).filter(
-    //   ([question, selectedOption]) => !selectedOption
-    // );
-    // console.log(typeof unansweredQuestions);
-    // if (!unansweredQuestions.length) {
-    //   message.error("Please select an option for each question.");
-    //   return;
-    // }
+    setLoader(true);
+    let hasError;
+    Object.entries(formValue && formValue[0]["formData"]).forEach(([key]) => {
+      if (!fieldValue.hasOwnProperty(key)) {
+        setLoader(false);
+        hasError = true;
+        return;
+      }
+    });
 
-console.log('----------------',fieldValue);
-console.log('-------formValue',formValue);
+    if (hasError) {
+      setLoader(false);
+      message.error("Please select an option for each question.");
 
-
-    // for (const [question, answer] in fieldValue) {
-    //   if (!fieldValue[answer] === "") {
-    //     message.error("Please select an option for each question.");
-    //     return;
-    //   }
-    // }
-
+      return;
+    }
+    setLoader(true);
     let totalPoints = 0;
 
     Object.entries(fieldValue).forEach(([question, selectedOption]) => {
@@ -96,47 +86,58 @@ console.log('-------formValue',formValue);
       if (selectedOptionData && selectedOptionData.point) {
         totalPoints += selectedOptionData.point;
       }
-      setFeedbackResponse(totalPoints);
     });
-    AddData();
+    setTotalPoints(totalPoints);
+    setSubmitted(true);
   };
 
   const AddData = async () => {
-    try {
-      const responseRef = doc(
-        FStore,
-        "RESPONSES",
-        id as string,
-        currentActiveFeedback.selectedParticipant.activeRound.id,
-        currentActiveFeedback.selectedParticipant.activeSelectedPartcipant
-          .id as string
-      );
-      await setDoc(responseRef, {
-        totalPoints: feedbackResponse,
-        response: fieldValue,
-        userEmail: auth.currentUser?.email,
+    const responseRef = doc(
+      FStore,
+      "RESPONSES",
+      id as string,
+      currentActiveFeedback.activeRound.id,
+      currentActiveFeedback.activeParticipant.id as string
+    );
+    await setDoc(
+      responseRef,
+      {
+        response: {
+          participantDetail: {
+            email: currentActiveFeedback.activeParticipant.email,
+            name: currentActiveFeedback.activeParticipant.uname,
+          },
+          [auth.currentUser?.email as any]: {
+            fieldValue: fieldValue,
+            totalPoints: totalPoints,
+          },
+        },
+      },
+      { merge: true }
+    )
+      .then(() => {
+        message.success("From Submitted Successfully");
+        setLoader(false);
+        navigate("/activefeedbackforms");
+      })
+      .catch((error) => {
+        setLoader(false);
+        message.error(error);
       });
-
-      console.log("Document successfully written!");
-    } catch (error) {
-      console.error("Error writing document: ", error);
-    }
   };
+
   return (
-    <Spin spinning={!loader} style={{ marginTop: "100px" }}>
-      {loader && (
+    <Spin spinning={loader} style={{ marginTop: "100px" }}>
+      {dataLoaded && (
         <>
           <div style={{}}>
             <div>
-              <h2>{`${currentActiveFeedback.selectedParticipant.selectedCompetition.cname} Feedback Form`}</h2>
+              <h2>{`${currentActiveFeedback.selectedCompetition?.cname} Feedback Form`}</h2>
             </div>
             <div>
               <div>
                 <b>Presenter's Name</b> :{" "}
-                {
-                  currentActiveFeedback.selectedParticipant
-                    .activeSelectedPartcipant.uname
-                }
+                {currentActiveFeedback.activeParticipant?.uname}
               </div>
             </div>
             <div style={{ padding: "5px" }}></div>
@@ -167,26 +168,29 @@ console.log('-------formValue',formValue);
                   <div style={{ padding: "5px" }}></div>
                   <div>
                     <Radio.Group onChange={handleChange} name={key}>
-                      <div>
+                      <Space direction="vertical">
                         {value.Options.map((option: any) => (
-                          <Radio value={option.value}>
-                            <div>{option.value}</div>
-                          </Radio>
+                          <div>
+                            <Radio value={option.value}>
+                              <div>{option.value}</div>
+                            </Radio>
+                          </div>
                         ))}
-                      </div>
+                      </Space>
                     </Radio.Group>
                   </div>
                 </FeedbackItem>
               </FeedbackContainer>
             )
           )}
+
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <Button type="primary" onClick={handleSubmit}>
+              Submit
+            </Button>
+          </div>
         </>
       )}
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        <Button type="primary" onClick={handleSubmit}>
-          Submit
-        </Button>
-      </div>
     </Spin>
   );
 };

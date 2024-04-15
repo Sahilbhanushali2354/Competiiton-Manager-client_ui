@@ -1,5 +1,5 @@
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { FStore, auth } from "../common/config/firebase/firebase.config";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { FStore } from "../common/config/firebase/firebase.config";
 import { PresentationDTO } from "../types/input.type";
 import { useEffect, useState } from "react";
 import { Button, Card, Spin } from "antd";
@@ -19,29 +19,28 @@ const AllPresentation = () => {
     AtomCurrentPresentation
   );
   useEffect(() => {
-    // debugger
     getAllPresentations();
   }, [window.localStorage.getItem("auth")]);
 
-  const getAllPresentations = async () => {
-    // debugger
-    console.log(auth);
-
+  const getAllPresentations = () => {
     setLoader(true);
-    let _presentationData: PresentationDTO[] = [] as PresentationDTO[];
+    const _presentationData: PresentationDTO[] = [] as PresentationDTO[];
     const q = query(
       collection(FStore, "PRESENTATION"),
       where("email", "==", window.localStorage.getItem("auth"))
     );
-    setLoader(false)
-    const querySnapshot = await getDocs(q)
-    querySnapshot.forEach((doc) => {
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      querySnapshot.forEach((doc) => {
+        const _data: PresentationDTO = doc.data() as PresentationDTO;
+        _data.id = doc.id;
+        _presentationData.push(_data as any);
+      });
+      setAllPresentations(_presentationData);
       setLoader(false);
-      const _data = doc.data();
-      _data.id = doc.id;
-      _presentationData.push(_data as any);
     });
-    setAllPresentations(_presentationData);
+
+    return unsubscribe;
   };
 
   return (
@@ -56,33 +55,43 @@ const AllPresentation = () => {
             <Button type="primary">ADD PRESENTATION</Button>
           </Link>
         </div>
-        <div style={{ display: "flex", flexDirection: "row" }}>
-          {AllPresentations.map((user, index) => (
-            <Link
-              to={`/allpresentation/edit/${user.id}`}
-              onClick={() => {
-                setLoader(true);
-                setCurrentPresentationData(user);
-                setLoader(false);
-              }}
-            >
-              <div style={{ padding: "5px" }}>
-                <Card key={user.id ?? index} style={{ width: "200px" }}>
-                  <div style={{ justifyContent: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: "10px",
+          }}
+        >
+          {!AllPresentations.length && !loader ? (
+            <div>
+              <h1>No Data Available ! </h1>
+            </div>
+          ) : (
+            AllPresentations.map((user, index) => (
+              <Link
+                to={`/allpresentation/edit/${user.id}`}
+                key={user.id ?? index}
+                onClick={() => setCurrentPresentationData(user)}
+              >
+                <div style={{ flex: "0 0 200px", padding: "5px" }}>
+                  <Card style={{ width: "100%" }}>
                     <div>
-                      <b>TOPIC </b>: {user.topic}
+                      <div>
+                        <b>TOPIC </b>: {user.topic}
+                      </div>
+                      <div>
+                        <b>CATEGORY </b>: {user.category}
+                      </div>
+                      <div>
+                        <b>FILE</b>: {user.fileName}
+                      </div>
                     </div>
-                    <div>
-                      <b>CATEGORY </b>: {user.category}
-                    </div>
-                    <div>
-                      <b>FILE </b>: {user.fileName}
-                    </div>
-                  </div>
-                </Card>
-              </div>
-            </Link>
-          ))}
+                  </Card>
+                </div>
+              </Link>
+            ))
+          )}
         </div>
       </div>
     </Spin>

@@ -12,7 +12,7 @@ import english from ".//translation/english.json";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <RecoilRoot>
-      <IntlProvider locale="en" messages={english}>
+      <IntlProvider locale="en" messages={english as any}>
         <ThemeProvider theme={Theme.dark}>
           <RouterProvider router={Router} />
         </ThemeProvider>

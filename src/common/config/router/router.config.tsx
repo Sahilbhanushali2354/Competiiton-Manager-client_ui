@@ -5,10 +5,12 @@ import Splash from "../../../pages/splash.page";
 import Forgotpassword from "../../../pages/forgotPassword.page";
 import MainLayout from "../../../layouts/main.layout";
 import Profile from "../../../pages/profile.page";
-import Presentation from "../../../pages/Presentation.page";
+import Presentation from "../../../pages/ActivePresentation.page";
 import AllPresentation from "../../../pages/AllPresentation.page";
 import Feedback from "../../../pages/Feedback.page";
 import ActiveFeedbacks from "../../../pages/ActiveFeedbacks.page";
+import CreateAccount from "../../../pages/CreateAccount.page";
+import CreatePassword from "../../../pages/CreatePassword.page";
 
 export const Router = createBrowserRouter([
   {
@@ -46,13 +48,18 @@ export const Router = createBrowserRouter([
     element: <Splash />,
   },
 
-  {
-    path: "/dashboard",
-    element: <Dashboard />,
-  },
+
   {
     path: "/login",
     element: <Login />,
+  },
+  {
+    path: "/createaccount",
+    element: <CreateAccount />,
+  },
+  {
+    path: "/createpassword",
+    element: <CreatePassword />,
   },
   {
     path: "/forgotpassword",

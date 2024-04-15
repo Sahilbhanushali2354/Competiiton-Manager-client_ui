@@ -1,7 +1,7 @@
 import { Theme } from "../../theme/Theme";
 import {
   AllActiveFeedbackDTO,
-  PeopleDataDTO,
+  NewAccountDTO,
   PresentationDTO,
   UserDTO,
 } from "../../types/input.type";
@@ -17,9 +17,9 @@ export const AtomTheme = atom({
   default: Theme.dark,
 });
 
-export const AtomPeopleData = atom<PeopleDataDTO[]>({
+export const AtomPeopleData = atom<NewAccountDTO[]>({
   key: "AtomPeopleData",
-  default: [] as PeopleDataDTO[],
+  default: [] as NewAccountDTO[],
 });
 
 export const AtomLangauge = atom({
@@ -46,3 +46,8 @@ export const CurrentActiveFeedbackAtom = atom<AllActiveFeedbackDTO>({
   key: "CurrentActiveFeedbackAtom",
   default: {} as AllActiveFeedbackDTO,
 });
+
+export const NewAccountAtom = atom<NewAccountDTO>({
+  key:'NewAccountAtom',
+  default:{} as NewAccountDTO
+})

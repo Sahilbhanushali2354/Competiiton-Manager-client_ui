@@ -16,7 +16,7 @@ import {
   MenuProps,
 } from "antd";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { signOut } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "../common/config/firebase/firebase.config";
 import { AtomLangauge, AtomTheme } from "../store/atom/atom.store";
 import { useRecoilState } from "recoil";
@@ -49,20 +49,23 @@ const MainLayout = () => {
   const [themeData, setThemeData] = useRecoilState(AtomTheme);
   const [loader, setLoader] = useState<boolean>(false);
   const [authDetails, setAuthDetails] = useState("");
-  const [selectedMenuKey, setSelectedMenuKey] = useState("1");
   const path = useLocation().pathname;
+
+  useEffect(() => {
+    const x = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        navigate("/login");
+      }
+    });
+
+    return () => x();
+  }, [navigate]);
 
   useEffect(() => {
     const _currentUser = window.localStorage.getItem("auth");
     setAuthDetails(_currentUser ?? "");
   }, []);
 
-  useEffect(() => {
-    console.log("called");
-
-    const _Sidermenu = window.localStorage.getItem("SiderMenu");
-    setSelectedMenuKey(_Sidermenu ?? "1");
-  }, [selectedMenuKey]);
   useEffect(() => {
     const x = window.localStorage.getItem("theme");
     const _currentTheme = x && JSON.parse(x);
@@ -73,7 +76,7 @@ const MainLayout = () => {
 
   const HeaderItem = [
     {
-      key: "1",
+      key: "/dashboard",
       label: <Link to="/dashboard">{translations.home}</Link>,
     },
   ];
@@ -89,7 +92,7 @@ const MainLayout = () => {
                 window.localStorage.setItem("langauge", "enUS");
               }}
             >
-              {translations.english}
+              English
             </span>
           ),
         }
@@ -102,7 +105,7 @@ const MainLayout = () => {
                 window.localStorage.setItem("langauge", "hiIN");
               }}
             >
-              {translations.hindi}
+              {hindi.hindi}
             </span>
           ),
         },
@@ -110,19 +113,19 @@ const MainLayout = () => {
 
   const SiderItems = [
     {
-      key: "1",
+      key: "/dashboard",
       label: <Link to="/dashboard">{translations.dashboard}</Link>,
     },
     {
-      key: "2",
+      key: "/profile",
       label: <Link to="/profile">{translations.profile}</Link>,
     },
     {
-      key: "3",
+      key: "/allpresentation",
       label: <Link to="/allpresentation">{translations.presentations}</Link>,
     },
     {
-      key: "4",
+      key: "/activefeedbackforms",
       label: <Link to="/activefeedbackforms">{translations.feedback}</Link>,
     },
   ];
@@ -130,9 +133,10 @@ const MainLayout = () => {
   const items = [
     ...SiderItems,
     {
-      key: "100",
+      key: "/login",
       label: (
         <Button
+          style={{ padding: "0" }}
           type="link"
           onClick={() =>
             signOut(auth)
@@ -153,7 +157,6 @@ const MainLayout = () => {
       ),
     },
   ];
-
   const toggleChange = (checked: boolean) => {
     setThemeData(checked ? Theme.dark : Theme.light);
     window.localStorage.setItem(
@@ -162,16 +165,15 @@ const MainLayout = () => {
     );
   };
 
-  const handleMenuChange = (keys: any) => {
-    setSelectedMenuKey(keys.key);
-    window.localStorage.setItem("SiderMenu", keys.key);
-  };
-
   return (
     <ConfigProvider
       locale={langaugeName === "hiIN" ? hiIN : enUS}
       theme={{
         components: {
+          Message: {
+            colorBgContainer:
+              themeData.id === Theme.dark.id ? "black" : "white",
+          },
           Layout: {
             colorPrimaryBg: themeData.id === Theme.dark.id ? "black" : "white",
             headerBg: themeData.id === Theme.dark.id ? "black" : "white",
@@ -183,6 +185,7 @@ const MainLayout = () => {
             itemColor: themeData.id === Theme.dark.id ? "white" : "black",
           },
         },
+
         algorithm:
           themeData.id === Theme.dark.id
             ? theme.darkAlgorithm
@@ -202,16 +205,10 @@ const MainLayout = () => {
               <div className="demo-logo" />
               <Menu
                 mode="horizontal"
-                defaultSelectedKeys={["1"]}
                 items={HeaderItem}
                 style={{ flex: 1, minWidth: 0 }}
+                defaultSelectedKeys={[path]}
               />
-              <Dropdown menu={{ items }} trigger={["click"]}>
-                <Space>
-                  <StyledDiv>{authDetails}</StyledDiv>
-                  <Avatar icon={<UserOutlined />}></Avatar>
-                </Space>
-              </Dropdown>
               <Switch
                 checked={themeData.id === Theme.dark.id}
                 onChange={toggleChange}
@@ -220,38 +217,35 @@ const MainLayout = () => {
                     themeData.id === Theme.dark.id ? "grey" : "black",
                 }}
               />
-              <Dropdown menu={{ items: LangaugeItems }}>
+
+              <div style={{ padding: "5px" }}></div>
+              <Dropdown trigger={["click"]} menu={{ items: LangaugeItems }}>
                 <div>
                   <a onClick={(e) => e.preventDefault()}>
                     {langaugeName === "enUS" ? (
-                      <Space>{translations.english}</Space>
+                      <Space>English</Space>
                     ) : (
                       <Space>{translations.hindi}</Space>
                     )}
                   </a>
                 </div>
               </Dropdown>
+              <div style={{ padding: "5px" }}></div>
+
+              <Dropdown menu={{ items }} trigger={["click"]}>
+                <Space>
+                  <StyledDiv style={{ cursor: "pointer" }}>
+                    {authDetails}
+                  </StyledDiv>
+                  <Avatar icon={<UserOutlined />}></Avatar>
+                </Space>
+              </Dropdown>
             </Header>
 
             <Layout>
-              <Sider
-                breakpoint="lg"
-                collapsedWidth="0"
-                onBreakpoint={(broken) => {
-                  console.log(broken);
-                }}
-                onCollapse={(collapsed, type) => {
-                  console.log(collapsed, type);
-                }}
-              >
+              <Sider breakpoint="lg" collapsedWidth="0">
                 <div className="demo-logo-vertical" />
-                <Menu
-                  mode="inline"
-                  selectedKeys={selectedMenuKey as any}
-                  defaultSelectedKeys={["1"]}
-                  items={SiderItems}
-                  onClick={handleMenuChange}
-                />
+                <Menu mode="inline" selectedKeys={[path]} items={SiderItems} />
               </Sider>
               <Layout style={{ padding: "0 24px 24px" }}>
                 <Breadcrumb

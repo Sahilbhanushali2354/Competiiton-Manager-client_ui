@@ -13,7 +13,6 @@ import {
   FormImage,
   GridContainer,
   InputDiv,
-  LoginButtonContainer,
   LoginForm,
   LoginImageContainer,
   Logo,
@@ -150,14 +149,14 @@ const Forgotpassword = () => {
                   <ErrorMessage>{errorMessage.email}</ErrorMessage>
                 </InputDiv>
 
-                <LoginButtonContainer>
+                <div>
                   <SendEmailButton onClick={handleSubmit}>
                     SEND EMAIL
                   </SendEmailButton>
                   <Button type="link" onClick={() => navigate("/login")}>
                     BACK TO LOGIN
                   </Button>
-                </LoginButtonContainer>
+                </div>
               </LoginForm>
             </Container1>
           </GridContainer>
