@@ -1,10 +1,14 @@
 import { Button, Input, Switch, message } from "antd";
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState, KeyboardEvent } from "react";
 import { ForgotPasswordDTO } from "../types/input.type";
 import { onAuthStateChanged, sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../common/config/firebase/firebase.config";
-import { AtomTheme, FieldsAtom } from "../store/atom/atom.store";
-import { useRecoilState } from "recoil";
+import {
+  AtomPeopleData,
+  AtomTheme,
+  FieldsAtom,
+} from "../store/atom/atom.store";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -47,7 +51,13 @@ const Forgotpassword = () => {
     {} as ForgotPasswordDTO
   );
   const [themeData, setThemeData] = useRecoilState(AtomTheme);
+  const peopleData = useRecoilValue(AtomPeopleData);
 
+  useEffect(() => {
+    if (!fields.email?.length || !peopleData.length) {
+      return navigate("/login");
+    }
+  }, []);
   useEffect(() => {
     const x = onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -82,7 +92,12 @@ const Forgotpassword = () => {
     if (!fields.email) {
       setErrorMessage({
         ...errorMessage,
-        ["email"]: "Enter Your Registrated Email",
+        email: "Enter Email",
+      });
+    } else if (!peopleData.some((person) => person.email === fields.email)) {
+      setErrorMessage({
+        ...errorMessage,
+        email: "Email does not exist",
       });
     } else {
       sendPasswordResetEmail(auth, fields.email)
@@ -111,9 +126,14 @@ const Forgotpassword = () => {
       checked ? JSON.stringify(Theme.dark) : JSON.stringify(Theme.light)
     );
   };
+  const handleKeydown = (e: KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSubmit();
+    }
+  };
   return (
     <ThemeProvider theme={themeData}>
-      <MainContainer spinning={loader} size="large">
+      <MainContainer spinning={loader}>
         <SubContainer>
           <ToggleContainer>
             <Switch
@@ -140,6 +160,7 @@ const Forgotpassword = () => {
                 <InputDiv>
                   <div>Email</div>
                   <Input
+                    onKeyDown={handleKeydown}
                     type="email"
                     name="email"
                     placeholder="Enter Your Email"

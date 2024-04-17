@@ -7,9 +7,11 @@ import { Link } from "react-router-dom";
 import {
   AtomAllPresentations,
   AtomCurrentPresentation,
+  AtomLangauge,
 } from "../store/atom/atom.store";
-import { useRecoilState } from "recoil";
-
+import { useRecoilState, useRecoilValue } from "recoil";
+import hindi from "../translation/hindi.json";
+import english from "../translation/english.json";
 const AllPresentation = () => {
   const [loader, setLoader] = useState(false);
 
@@ -18,6 +20,9 @@ const AllPresentation = () => {
   const [currentPresentationData, setCurrentPresentationData] = useRecoilState(
     AtomCurrentPresentation
   );
+  const langauge = useRecoilValue(AtomLangauge);
+  const translation = langauge == "enUS" ? english : hindi;
+
   useEffect(() => {
     getAllPresentations();
   }, [window.localStorage.getItem("auth")]);
@@ -52,7 +57,7 @@ const AllPresentation = () => {
             to={`/allpresentation/add`}
             onClick={() => console.log(currentPresentationData)}
           >
-            <Button type="primary">ADD PRESENTATION</Button>
+            <Button type="primary">{translation.addpresentation}</Button>
           </Link>
         </div>
         <div
@@ -78,13 +83,13 @@ const AllPresentation = () => {
                   <Card style={{ width: "100%" }}>
                     <div>
                       <div>
-                        <b>TOPIC </b>: {user.topic}
+                        <b>TOPIC </b>: {user?.topic}
                       </div>
                       <div>
-                        <b>CATEGORY </b>: {user.category}
+                        <b>CATEGORY </b>: {user?.category}
                       </div>
                       <div>
-                        <b>FILE</b>: {user.fileName}
+                        <b>FILE</b>: {user?.fileName}
                       </div>
                     </div>
                   </Card>

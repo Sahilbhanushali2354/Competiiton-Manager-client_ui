@@ -4,8 +4,13 @@ import { FStore } from "../common/config/firebase/firebase.config";
 import { Button, Card, Spin } from "antd";
 import { Link } from "react-router-dom";
 import { AllActiveFeedbackDTO } from "../types/input.type";
-import { CurrentActiveFeedbackAtom } from "../store/atom/atom.store";
-import { useRecoilState } from "recoil";
+import {
+  AtomLangauge,
+  CurrentActiveFeedbackAtom,
+} from "../store/atom/atom.store";
+import { useRecoilState, useRecoilValue } from "recoil";
+import hindi from "../translation/hindi.json";
+import english from "../translation/english.json";
 
 const ActiveFeedbacks = () => {
   useEffect(() => {
@@ -19,6 +24,8 @@ const ActiveFeedbacks = () => {
   const [currentActiveFeedback, setCurrentActiveFeedback] = useRecoilState(
     CurrentActiveFeedbackAtom
   );
+  const langauge = useRecoilValue(AtomLangauge);
+  const translation = langauge == "enUS" ? english : hindi;
 
   const fetchAllActiveFeedback = () => {
     console.log(currentActiveFeedback);
@@ -59,15 +66,15 @@ const ActiveFeedbacks = () => {
                 >
                   <div>
                     <div>
-                      <b>Competition Name : </b>
+                      <b>{translation.competitionname} : </b>
                       {activeFeedback.selectedCompetition.cname}
                     </div>
                     <div>
-                      <b>Participant Name : </b>
+                      <b>{translation.participantname} : </b>
                       {activeFeedback.activeParticipant.uname}
                     </div>
                     <div>
-                      <b>Active Round : </b>
+                      <b>{translation.activeround} : </b>
                       {activeFeedback.activeRound.label}
                     </div>
                   </div>
@@ -77,7 +84,7 @@ const ActiveFeedbacks = () => {
                       onClick={() => setCurrentActiveFeedback(activeFeedback)}
                     >
                       <Button type="primary" style={{ width: "100%" }}>
-                        Give Feedback
+                        {translation.givefeedback}
                       </Button>
                     </Link>
                   </div>

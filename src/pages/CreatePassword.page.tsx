@@ -1,4 +1,4 @@
-import { Button, Input, Switch, message } from "antd";
+import { Input, Switch, message } from "antd";
 import { ChangeEvent, useEffect, useState } from "react";
 import { NewAccountErrorDTO } from "../types/input.type";
 import { FStore, auth } from "../common/config/firebase/firebase.config";
@@ -9,11 +9,7 @@ import { useRecoilState } from "recoil";
 import { ThemeProvider } from "styled-components";
 import { Theme } from "../theme/Theme";
 import { addDoc, collection } from "firebase/firestore";
-import {
-  EyeInvisibleOutlined,
-  EyeTwoTone,
-  RollbackOutlined,
-} from "@ant-design/icons";
+import { EyeInvisibleOutlined, EyeTwoTone } from "@ant-design/icons";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 
 import {
@@ -32,6 +28,8 @@ import {
   Title,
   ToggleContainer,
 } from "./login.page";
+import { BackButtonContainer } from "./CreateAccount.page";
+import { FaArrowLeftLong } from "react-icons/fa6";
 
 const CreatePassword = () => {
   const navigate = useNavigate();
@@ -45,7 +43,7 @@ const CreatePassword = () => {
 
   useEffect(() => {
     if (!fields.email) {
-      navigate("login/createaccount");
+      navigate("createaccount");
     }
     const x = window.localStorage.getItem("theme");
     const y = x && JSON.parse(x ?? "");
@@ -115,7 +113,7 @@ const CreatePassword = () => {
 
   return (
     <ThemeProvider theme={themeData}>
-      <MainContainer spinning={loader} size="large">
+      <MainContainer spinning={loader}>
         <SubContainer>
           <ToggleContainer>
             <Switch
@@ -134,6 +132,12 @@ const CreatePassword = () => {
             <Container1>
               <LoginForm>
                 <Header>
+                  <BackButtonContainer
+                    style={{ color: "white", background: "black" }}
+                    icon={<FaArrowLeftLong />}
+                    onClick={() => navigate("/createaccount")}
+                  ></BackButtonContainer>
+                  <span style={{ margin: "5px" }}></span>
                   <Logo src={logo} />
                   <Title>Create Your Password</Title>
                 </Header>
@@ -160,11 +164,6 @@ const CreatePassword = () => {
                   <LoginButton onClick={handleCreate}>
                     Create Account
                   </LoginButton>
-                  <Button
-                    style={{ width: "50px", borderRadius: "20px" }}
-                    icon={<RollbackOutlined />}
-                    onClick={() => navigate("/createaccount")}
-                  ></Button>
                 </div>
               </LoginForm>
             </Container1>

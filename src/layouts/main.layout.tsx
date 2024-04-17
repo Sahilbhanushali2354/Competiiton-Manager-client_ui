@@ -72,7 +72,7 @@ const MainLayout = () => {
     setThemeData(_currentTheme ?? Theme.dark);
   }, []);
 
-  const translations = langaugeName === "hiIN" ? hindi : english;
+  const translations = langaugeName === "enUS" ? english : hindi;
 
   const HeaderItem = [
     {
@@ -142,7 +142,7 @@ const MainLayout = () => {
             signOut(auth)
               .then(() => {
                 setLoader(true);
-                localStorage.removeItem("SiderMenu");
+                localStorage.clear();
                 navigate("/login");
                 message.success(translations.logoutSuccess);
               })

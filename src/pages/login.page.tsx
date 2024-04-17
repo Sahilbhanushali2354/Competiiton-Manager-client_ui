@@ -14,7 +14,7 @@ import { useRecoilState } from "recoil";
 import styled, { ThemeProvider } from "styled-components";
 import loginImage from "../assets/images/Wavy_Gen-01_Single-07_prev_ui.png";
 import { Theme } from "../theme/Theme";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { EyeInvisibleOutlined, EyeTwoTone } from "@ant-design/icons";
 
 export const MainContainer = styled(Spin)`
@@ -118,7 +118,7 @@ const Login = () => {
   const [fields, setFields] = useRecoilState(FieldsAtom);
   const [errorMessage, setErrorMessage] = useState<UserDTO>({} as UserDTO);
   const [themeData, setThemeData] = useRecoilState(AtomTheme);
-  const [poepleData, setPeopleData] = useRecoilState(AtomPeopleData);
+  const [peopleData, setPeopleData] = useRecoilState(AtomPeopleData);
 
   useEffect(() => {
     const x = onAuthStateChanged(auth, (user) => {
@@ -132,7 +132,7 @@ const Login = () => {
 
   useEffect(() => {
     getPeopleData();
-  }, [poepleData]);
+  }, [peopleData]);
   useEffect(() => {
     const x = window.localStorage.getItem("theme");
     const y = x && JSON.parse(x ?? "");
@@ -156,21 +156,25 @@ const Login = () => {
       trimmedValue = value.replace(/\s/g, "");
     }
 
-    setFields({ ...fields, [name]: trimmedValue });
+    setFields((prevFields) => ({ ...prevFields, [name]: trimmedValue }));
 
-    let _error = { ...errorMessage };
+    const generateErrorMessage = (fieldName: string, fieldValue: string) => {
+      if (!fieldValue) {
+        return `Enter Your ${fieldName}`;
+      } else if (fieldName === "password" && fieldValue.includes(" ")) {
+        return "You can't Enter Space in Password";
+      } else {
+        return "";
+      }
+    };
+
+    const updatedErrorMessage = { ...errorMessage };
+
     if (name === "email" || name === "password") {
-      _error = {
-        ...errorMessage,
-        email: name === "email" && !value ? "Enter Your Email" : "",
-        password:
-          name === "password" && value.includes(" ")
-            ? "You can't Enter Space in Password"
-            : "",
-      };
+      updatedErrorMessage[name] = generateErrorMessage(name, value);
     }
 
-    setErrorMessage(_error);
+    setErrorMessage(updatedErrorMessage);
   };
 
   const handlePasswordkeydown = (e: KeyboardEvent) => {
@@ -193,7 +197,7 @@ const Login = () => {
       setLoader(false);
       _error = { ..._error, ["password"]: "Enter Your password" };
     } else {
-      const _userExists = poepleData.some(
+      const _userExists = peopleData.some(
         (person) => person.email == fields.email
       );
       if (!_userExists) {
@@ -203,7 +207,6 @@ const Login = () => {
         return;
       }
       signin();
-      setFields({});
     }
     setErrorMessage(_error);
   };
@@ -217,7 +220,9 @@ const Login = () => {
       .then((userCredential) => {
         const user = userCredential.user;
         window.localStorage.setItem("auth", user.email ?? "");
+        navigate("/dashboard");
         message.success("Login SuccessFully");
+        setFields({});
       })
       .catch((error) => {
         setLoader(false);
@@ -238,6 +243,7 @@ const Login = () => {
           updatedData.push(data);
         });
         setPeopleData(updatedData);
+        getCurrentPeopleData();
       }
     );
 
@@ -245,6 +251,25 @@ const Login = () => {
       unsubscribe();
     };
   };
+
+  const getCurrentPeopleData = async () => {
+    const q = query(
+      collection(FStore, "PEOPLE"),
+      where("email", "==", localStorage.getItem("auth"))
+    );
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      let x = {} as NewAccountDTO;
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        data.id = doc.id;
+        x = data as NewAccountDTO;
+      });
+      localStorage.setItem("Authdetails", JSON.stringify(x));
+    });
+
+    return unsubscribe;
+  };
+
   return (
     <ThemeProvider theme={themeData}>
       <MainContainer spinning={loader}>
@@ -300,9 +325,11 @@ const Login = () => {
                   ></Input.Password>
                   <ErrorMessage>{errorMessage.password}</ErrorMessage>
                 </InputDiv>
-                <ForgotPasswordLink to="/forgotpassword">
-                  Forgot Password?
-                </ForgotPasswordLink>
+                {fields.email && (
+                  <ForgotPasswordLink to="/forgotpassword">
+                    Forgot Password?
+                  </ForgotPasswordLink>
+                )}
                 <div>
                   <LoginButton onClick={handleLogin}>Login</LoginButton>
                 </div>

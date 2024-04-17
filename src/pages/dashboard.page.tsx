@@ -14,12 +14,12 @@ const Dashboard = () => {
         index++;
       } else {
         clearInterval(interval);
+        console.log(authDetails);
       }
     }, 100);
     return () => clearInterval(interval);
   }, []);
   const [authDetails, setAuthDetails] = useState("");
-  console.log(authDetails);
 
   return (
     <Spin spinning={false}>

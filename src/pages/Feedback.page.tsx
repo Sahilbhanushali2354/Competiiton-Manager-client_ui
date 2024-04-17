@@ -5,8 +5,13 @@ import { Button, Radio, Space, Spin, message } from "antd";
 import styled from "styled-components";
 import { FieldValueDTO } from "../types/input.type";
 import { useNavigate, useParams } from "react-router-dom";
-import { CurrentActiveFeedbackAtom } from "../store/atom/atom.store";
+import {
+  CurrentActiveFeedbackAtom,
+  AtomLangauge,
+} from "../store/atom/atom.store";
 import { useRecoilValue } from "recoil";
+import hindi from "../translation/hindi.json";
+import english from "../translation/english.json";
 
 const FeedbackContainer = styled.div`
   display: flex;
@@ -30,6 +35,8 @@ const Feedback = () => {
   const [totalPoints, setTotalPoints] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const langauge = useRecoilValue(AtomLangauge);
+  const translation = langauge == "enUS" ? english : hindi;
   useEffect(() => {
     if (!currentActiveFeedback.id) {
       return navigate("/activefeedbackforms");
@@ -132,25 +139,17 @@ const Feedback = () => {
         <>
           <div style={{}}>
             <div>
-              <h2>{`${currentActiveFeedback.selectedCompetition?.cname} Feedback Form`}</h2>
+              <h2>{`${currentActiveFeedback.selectedCompetition?.cname} ${translation.feedbackform}`}</h2>
             </div>
             <div>
               <div>
-                <b>Presenter's Name</b> :{" "}
+                <b>{translation.presentername}</b> :
+                <span style={{ margin: "2px" }}></span>
                 {currentActiveFeedback.activeParticipant?.uname}
               </div>
             </div>
             <div style={{ padding: "5px" }}></div>
-            <div>
-              We value your honest feedback to ensure a fair evaluation of the
-              presenter's performance. Your response to each question will help
-              us gauge how effectively the presenter conveyed their message
-              through their speech. Thank you for taking the time! We value your
-              honest feedback to ensure a fair evaluation of the presenter's
-              performance. Your response to each question will help us gauge how
-              effectively the presenter conveyed their message through their
-              speech. Than k you for taking the time!
-            </div>
+            <div>{translation.feedbackdescription}</div>
           </div>
           <div style={{ padding: "5px" }}></div>
           {Object.entries(formValue && formValue[0]["formData"]).map(

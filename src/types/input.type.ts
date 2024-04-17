@@ -60,7 +60,7 @@ export interface PresentationDTO {
   email?: string;
   description?: string;
   id?: string;
-  competitionName: string;
+  competitionData:CompetitionDTO;
   roundData: RoundsDataDTO;
 }
 

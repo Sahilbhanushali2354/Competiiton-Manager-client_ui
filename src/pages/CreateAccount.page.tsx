@@ -5,9 +5,10 @@ import { useNavigate } from "react-router-dom";
 import logo from "../assets/images/protocol zone logo.png";
 import { AtomTheme, NewAccountAtom } from "../store/atom/atom.store";
 import { useRecoilState } from "recoil";
-import { ThemeProvider } from "styled-components";
+import styled, { ThemeProvider } from "styled-components";
 import { Theme } from "../theme/Theme";
-import { RollbackOutlined } from "@ant-design/icons";
+import { FaArrowLeftLong } from "react-icons/fa6";
+
 import {
   Container1,
   ErrorMessage,
@@ -25,6 +26,11 @@ import {
   ToggleContainer,
 } from "./login.page";
 
+export const BackButtonContainer = styled(Button)`
+  width: 50px;
+  border-color:'black'
+  border-radius: 20px;
+`;
 const CreateAccount = () => {
   const navigate = useNavigate();
   const [fields, setFields] = useRecoilState(NewAccountAtom);
@@ -50,28 +56,34 @@ const CreateAccount = () => {
     );
   };
 
-  const handlechange = (e: ChangeEvent<HTMLInputElement>) => {
-    let name = e.target.name;
-    let value = e.target.value;
-    setFields((prevfields) => ({ ...prevfields, [name]: value }));
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
 
-    let _error = { ...errorMessage };
+    setFields((prevFields) => ({ ...prevFields, [name]: value }));
 
-    if (
-      name === "uname" ||
-      name === "email" ||
-      name === "contact" ||
-      name === "address"
-    )
-      _error = {
-        ...errorMessage,
-        uname: name === "uname" && !value ? "Enter Username" : "",
-        email: name === "email" && !value ? "Enter Email" : "",
-        contact: name === "contact" && !value ? "Enter Phone Number" : "",
-        address: name === "address" && !value ? "Enter Address" : "",
-      };
-    setErrorMessage(_error);
+    const generateErrorMessage = (fieldName: string, fieldValue: string) => {
+      switch (fieldName) {
+        case "uname":
+          return !fieldValue ? "Enter Username" : "";
+        case "email":
+          return !fieldValue ? "Enter Email" : "";
+        case "contact":
+          return fieldValue.length !== 10
+            ? "Phone Number must be 10 digits"
+            : "";
+        case "address":
+          return !fieldValue ? "Enter Address" : "";
+        default:
+          return "";
+      }
+    };
+
+    setErrorMessage((prevError) => ({
+      ...prevError,
+      [name]: generateErrorMessage(name, value),
+    }));
   };
+
   const handleProfile = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     let { name, value } = e.target;
@@ -115,6 +127,8 @@ const CreateAccount = () => {
     }
 
     if (!fields.contact) _error = { ..._error, contact: "Enter Phone Number" };
+    else if (fields.contact.length !== 10)
+      _error = { ..._error, contact: "Enter Valid Phone Number" };
 
     if (!userProfile) {
       _error = { ..._error, profile: "Select Profile Photo" };
@@ -153,7 +167,7 @@ const CreateAccount = () => {
 
   return (
     <ThemeProvider theme={themeData}>
-      <MainContainer spinning={loader} size="large">
+      <MainContainer spinning={loader}>
         <SubContainer>
           <ToggleContainer>
             <Switch
@@ -172,6 +186,11 @@ const CreateAccount = () => {
             <Container1>
               <LoginForm>
                 <Header>
+                  <BackButtonContainer
+                    style={{ color: "white", background: "black" }}
+                    icon={<FaArrowLeftLong />}
+                    onClick={() => navigate("/login")}
+                  ></BackButtonContainer><span style={{margin:'5px'}}></span>
                   <Logo src={logo} />
                   <Title>Create Your Account</Title>
                 </Header>
@@ -183,7 +202,7 @@ const CreateAccount = () => {
                     type="text"
                     name="uname"
                     placeholder="Enter Your Name"
-                    onChange={handlechange}
+                    onChange={handleChange}
                     value={fields.uname}
                   />
                   <ErrorMessage>{errorMessage.uname}</ErrorMessage>
@@ -194,7 +213,7 @@ const CreateAccount = () => {
                     type="email"
                     name="email"
                     placeholder="Enter Your Email"
-                    onChange={handlechange}
+                    onChange={handleChange}
                     value={fields.email}
                   />
                   <ErrorMessage>{errorMessage.email}</ErrorMessage>
@@ -210,7 +229,7 @@ const CreateAccount = () => {
                     type="number"
                     name="contact"
                     placeholder="Enter Your Phone Number"
-                    onChange={handlechange}
+                    onChange={handleChange}
                     value={fields.contact}
                   />
                   <ErrorMessage>{errorMessage.contact}</ErrorMessage>
@@ -221,36 +240,17 @@ const CreateAccount = () => {
                     type="text"
                     name="address"
                     placeholder="Enter Your Address"
-                    onChange={handlechange}
+                    onChange={handleChange}
                     value={fields.address}
                   />
                   <ErrorMessage>{errorMessage.address}</ErrorMessage>
                 </InputDiv>
-                {/* <InputDiv>
-                  <div>Password</div>
-                  <Input.Password
-                    iconRender={(visible) =>
-                      visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
-                    }
-                    type="password"
-                    name="password"
-                    placeholder="Enter Your Password"
-                    onChange={handlechange}
-                    value={fields.password}
-                  ></Input.Password>
-                  <ErrorMessage>{errorMessage.password}</ErrorMessage>
-                </InputDiv> */}
                 <div
                   style={{ display: "flex", justifyContent: "space-between" }}
                 >
                   <LoginButton onClick={handleCreate}>
                     Create Account
                   </LoginButton>
-                  <Button
-                    style={{ width: "50px", borderRadius: "20px" }}
-                    icon={<RollbackOutlined />}
-                    onClick={() => navigate("/login")}
-                  ></Button>
                 </div>
               </LoginForm>
             </Container1>

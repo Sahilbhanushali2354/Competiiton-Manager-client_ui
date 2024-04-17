@@ -1,16 +1,8 @@
 import { Spin, Image, Input, Button, message } from "antd";
-import {
-  collection,
-  doc,
-  onSnapshot,
-  query,
-  setDoc,
-  where,
-} from "firebase/firestore";
 import { useRecoilValue } from "recoil";
 import { AtomLangauge } from "../store/atom/atom.store";
 import { NewAccountDTO } from "../types/input.type";
-import { FStore, auth } from "../common/config/firebase/firebase.config";
+import { auth } from "../common/config/firebase/firebase.config";
 import { ChangeEvent, useEffect, useState } from "react";
 import hindi from "../translation/hindi.json";
 import english from "../translation/english.json";
@@ -82,7 +74,7 @@ const Profile = () => {
     useState<NewAccountDTO>({} as NewAccountDTO);
 
   useEffect(() => {
-    getPeopleData();
+    getCurrentPeopleData();
     if (currentUserData) {
       setInitialCurrentUserData(currentUserData);
     }
@@ -99,50 +91,47 @@ const Profile = () => {
 
   const isUpdateDisabled = !isCurrentUserDataChanged();
   // setShowResetButton(isUpdateDisabled);
-  const getPeopleData = async () => {
-    setLoader(true);
-    const q = query(
-      collection(FStore, "PEOPLE"),
-      where("email", "==", localStorage.getItem("auth"))
-    );
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      let x = {} as NewAccountDTO;
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        data.id = doc.id;
-        x = data as NewAccountDTO;
-      });
-      setCurrentUserData(x as NewAccountDTO);
-      setLoader(false);
-    });
+  const getCurrentPeopleData = async () => {
+    // setLoader(true);
+    // const q = query(
+    //   collection(FStore, "PEOPLE"),
+    //   where("email", "==", localStorage.getItem("auth"))
+    // );
+    // const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    //   let x = {} as NewAccountDTO;
+    //   querySnapshot.forEach((doc) => {
+    //     const data = doc.data();
+    //     data.id = doc.id;
+    //     x = data as NewAccountDTO;
+    //   });
+    const x = localStorage.getItem("Authdetails");
+    const _currentUserData = x ? JSON.parse(x) : null;
 
-    return unsubscribe;
+    setCurrentUserData(_currentUserData as NewAccountDTO);
   };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    let name = e.target.name;
-    let val = e.target.value;
-    const value = val.replace(/\s{2,}/g, " ");
-    setCurrentUserData({ ...currentUserData, [name]: value });
+    const { name, value } = e.target;
+    setCurrentUserData((prevData) => ({ ...prevData, [name]: value }));
     setShowResetButton(true);
-
-    let _error = { ...errorMessage };
-
-    if (
-      name === "uname" ||
-      name === "email" ||
-      name === "contact" ||
-      name === "address"
-    )
-      _error = {
-        ...errorMessage,
-        uname: name === "uname" && !value ? "Enter Username" : "",
-        email: name === "email" && !value ? "Enter Email" : "",
-        contact: name === "contact" && !value ? "Enter Phone Number" : "",
-        address: name === "address" && !value ? "Enter Address" : "",
-      };
-    setErrorMessage(_error);
+  
+    const generateErrorMessage = (fieldName: string, fieldValue: string) => {
+      if (!fieldValue) {
+        return `Enter ${fieldName}`;
+      } else {
+        return "";
+      }
+    };
+  
+    const updatedErrorMessage = { ...errorMessage };
+  
+    if (name === "uname" || name === "email" || name === "contact" || name === "address") {
+      updatedErrorMessage[name] = generateErrorMessage(name, value);
+    }
+  
+    setErrorMessage(updatedErrorMessage);
   };
+  
   const handleUpdate = () => {
     setLoader(true);
     for (const key in currentUserData) {
@@ -158,32 +147,32 @@ const Profile = () => {
   };
 
   const updatedData = async () => {
-    await setDoc(
-      doc(FStore, "PEOPLE", currentUserData.id as string),
-      currentUserData
-    )
-      .then(() => {
-        console.log("Updated Successfully");
-        setShowResetButton(false);
-        // navigate(0);
-      })
-      .catch((error) => console.log(error));
+    // await setDoc(
+    //   doc(FStore, "PEOPLE", currentUserData.id as string),
+    //   currentUserData
+    // )
+    //   .then(() => {
+    //     console.log("Updated Successfully");
+    //     setShowResetButton(false);
+    //   })
+    //   .catch((error) => console.log(error));
 
-    const docRef = doc(FStore, "PEOPLE", currentUserData.id as string);
-    const unsubscribe = onSnapshot(docRef, (doc) => {
-      if (doc.exists()) {
-        setCurrentUserData(doc.data());
-      } else {
-      }
-    });
+    // const docRef = doc(FStore, "PEOPLE", currentUserData.id as string);
+    // const unsubscribe = onSnapshot(docRef, (doc) => {
+    //   if (doc.exists()) {
+    //     setCurrentUserData(doc.data());
+    //   } else {
+    //   }
+    // });
 
-    return () => unsubscribe();
+    // return () => unsubscribe();
+    localStorage.setItem("Authdetails", JSON.stringify(currentUserData));
   };
   const handleReset = () => {
     setShowResetButton(false);
     setErrorMessage({});
 
-    getPeopleData();
+    getCurrentPeopleData();
   };
   return (
     <Spin spinning={loader}>

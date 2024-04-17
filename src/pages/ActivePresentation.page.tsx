@@ -6,7 +6,6 @@ import {
   UploadFile,
   UploadProps,
   message,
-  notification,
   Dropdown,
   MenuProps,
   Space,
@@ -15,6 +14,7 @@ import {
 import { ChangeEvent, useEffect, useState } from "react";
 import {
   ActiveParticipantDTO,
+  CompetitionDTO,
   PresentationDTO,
   PresentationErrorDTO,
   RoundsDataDTO,
@@ -43,7 +43,6 @@ import { DownOutlined } from "@ant-design/icons";
 
 const Presentation = () => {
   const { id } = useParams();
-  console.log("presentation Page", id);
 
   const [currentPresentationData, setCurrentPresentationData] = useRecoilState(
     AtomCurrentPresentation
@@ -61,7 +60,8 @@ const Presentation = () => {
   const [allActiveData, setallActiveData] = useState<ActiveParticipantDTO[]>(
     [] as ActiveParticipantDTO[]
   );
-  const [selectedCompetition, setSelectedCompetition] = useState("");
+  const [selectedCompetition, setSelectedCompetition] =
+    useState<CompetitionDTO>({} as CompetitionDTO);
   const [activeRound, setActiveRound] = useState<RoundsDataDTO>(
     {} as RoundsDataDTO
   );
@@ -112,26 +112,23 @@ const Presentation = () => {
     return presentationDataChanged || fileChanged;
   };
   const isUpdateDisabled = !isPresentationDataChanged();
-  console.log(currentPresentationData.fileName, newFile.name);
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     let name = e.target.name;
     let val = e.target.value;
     const value = val.replace(/\s{2,}/g, " ");
     setCurrentPresentationData({ ...currentPresentationData, [name]: value });
 
-    let _error = { ...errorMessage };
-    if (name === "topic" || name === "category" || name === "description")
-      _error = {
-        ...errorMessage,
-        topic: name === "topic" && !value ? translation.errors.topic : "",
-        category:
-          name === "category" && !value ? translation.errors.category : "",
-        description:
-          name === "description" && !value
-            ? translation.errors.description
-            : "",
-      };
-    setErrorMessage(_error);
+    const generateErrorMessage = (fieldName: string, fieldValue: string) => {
+      if (!fieldValue) {
+        return `Enter ${fieldName}`;
+      } else {
+        return "";
+      }
+    };
+
+    const updatedErrorMessage: any = { ...errorMessage };
+    updatedErrorMessage[name] = generateErrorMessage(name, value);
+    setErrorMessage(updatedErrorMessage);
   };
 
   const uplaodChange: UploadProps["onChange"] = (info) => {
@@ -206,13 +203,17 @@ const Presentation = () => {
     uploadBytes(storageRef, newFile as any, metadata)
       .then((snapshot) => {
         setLoader(true);
+        const auth1 = localStorage.getItem("Authdetails");
+        const authDetails = auth1 && JSON.parse(auth1);
+        const name = authDetails ? authDetails.uname : "";
         return {
           ...currentPresentationData,
-          competitionName: selectedCompetition as string,
+          competitionData: selectedCompetition,
           roundData: { id: activeRoundData.id, label: activeRoundData.label },
           fileName: newFile.name,
           time: snapshot.metadata.timeCreated,
           email: auth.currentUser?.email,
+          name: name,
         };
       })
       .catch((e) => {
@@ -235,10 +236,9 @@ const Presentation = () => {
       })
       .catch((err) => {
         setLoader(false);
-        notification.open({ message: err, type: "error" });
+        message.error(err);
       });
   };
-
   const handleSave = () => {
     setLoader(true);
     let _error = { ...errorMessage };
@@ -247,7 +247,7 @@ const Presentation = () => {
       !currentPresentationData.category ||
       !currentPresentationData.description ||
       !newFile.name ||
-      !selectedCompetition
+      !selectedCompetition.cname?.length
     ) {
       setLoader(false);
       _error = {
@@ -260,7 +260,7 @@ const Presentation = () => {
           ? translation.errors.category
           : "",
         presentation: !newFile.name ? translation.errors.presentation : "",
-        competitionName: !selectedCompetition
+        competitionName: !selectedCompetition.cname?.length
           ? translation.errors.competition
           : "",
       };
@@ -311,6 +311,7 @@ const Presentation = () => {
       uploadBytes(storageRef, newFile as any, metadata)
         .then((snapshot) => {
           setLoader(true);
+
           return {
             ...currentPresentationData,
             fileName: newFile.name,
@@ -360,19 +361,21 @@ const Presentation = () => {
       navigate("/allpresentation");
     }
   };
-  const handleItemClick = (competitionName: string) => {
-    setSelectedCompetition(competitionName);
+  const handleItemClick = (competitionData: CompetitionDTO) => {
+    setSelectedCompetition(competitionData);
     const activeRoundData: any = allActiveData.find(
       (competition: any) =>
-        competition.selectedCompetition.cname === competitionName
+        competition.selectedCompetition.cname === competitionData.cname
     );
     setActiveRoundData(activeRoundData?.roundsData ?? {});
+    setErrorMessage({ ...errorMessage, competitionName: "" });
   };
   const items: MenuProps["items"] = allActiveData.map((round: any) => ({
     key: round.id,
     label: round.selectedCompetition.cname,
     onClick: () => {
-      handleItemClick(round.selectedCompetition.cname);
+      handleItemClick(round.selectedCompetition);
+      console.log(round.selectedCompetition);
 
       // if (activeRoundData) {
       //   setActiveRound(activeRoundData.roundsData);
@@ -493,31 +496,38 @@ const Presentation = () => {
         <div>
           <p>
             {window.location.href.split("/").includes("edit") ||
-            selectedCompetition
-              ? "Selected Competition"
-              : "Select Competition"}
+            selectedCompetition.cname
+              ? translation.selectedcompetition
+              : translation.selectcompetition}
           </p>
           <Dropdown
             disabled={window.location.href.split("/").includes("edit")}
             menu={{ items: items }}
             trigger={["click"]}
           >
-            <Space>
-              {window.location.href.split("/").includes("edit")
-                ? currentPresentationData.competitionName
-                : selectedCompetition.length
-                ? selectedCompetition
-                : "Select Competition"}
-              {window.location.href.split("/").includes("edit") ? null : (
-                <DownOutlined />
-              )}
+            <Space style={{ cursor: "pointer" }}>
+              {window.location.href.split("/").includes("edit") &&
+              AllPresentations.length
+                ? currentPresentationData.competitionData.cname
+                : selectedCompetition && selectedCompetition.cname?.length
+                ? selectedCompetition.cname
+                : translation.selectcompetition}
+              <DownOutlined
+                style={{ cursor: "pointer" }}
+                onClick={() => {
+                  window.location.href.split("/").includes("edit")
+                    ? message.error(`Sorry Can't edit Competition Detail`)
+                    : null;
+                }}
+              />
             </Space>
           </Dropdown>
           {(window.location.href.split("/").includes("edit") &&
-            currentPresentationData.roundData) ||
-          selectedCompetition ? (
+            AllPresentations.length &&
+            currentPresentationData.roundData.label.length) ||
+          selectedCompetition.cname?.length ? (
             <span style={{ margin: "15px" }}>
-              <Space>Active Round : </Space>
+              <Space>{translation.activeround}</Space>
               <span style={{ margin: "5px" }}></span>
               <Input
                 style={{
@@ -527,13 +537,14 @@ const Presentation = () => {
                 readOnly={true}
                 value={
                   window.location.href.split("/").includes("edit")
-                    ? currentPresentationData.roundData.label
+                    ? currentPresentationData.roundData?.label
                     : activeRoundData.label
                 }
               />
             </span>
           ) : null}
         </div>
+        <div style={{ padding: "5px" }}></div>
         <div style={{ color: "red", fontSize: "13px" }}>
           {errorMessage.competitionName}
         </div>
